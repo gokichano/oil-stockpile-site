@@ -1,0 +1,242 @@
+import React, { useMemo, useState } from "react";
+
+const tabs = [
+  { id: "counter", label: "カウンター" },
+  { id: "tanker", label: "タンカー" },
+  { id: "scale", label: "石油ものさし" },
+  { id: "about", label: "about" },
+];
+
+const stockData = {
+  totalDays: 169,
+  standardDays: 247,
+  reserveRate: 68.4,
+  tankers: 42,
+  dailyConsumption: "0.59",
+  national: 91,
+  privateReserve: 73,
+  jointReserve: 5,
+  otherReserve: 78,
+};
+
+const aboutLinks = [
+  { id: "purpose", label: "目的" },
+  { id: "source", label: "データ出典" },
+  { id: "company", label: "運営・会社概要" },
+  { id: "media", label: "メディア・報道関係者の方へ" },
+  { id: "notice", label: "免責事項" },
+  { id: "contact", label: "お問い合わせ" },
+];
+
+function runSelfTests() {
+  console.assert(tabs.length === 4, "tabs should include 4 sections");
+  console.assert(tabs.every((tab) => tab.id && tab.label), "every tab should have id and label");
+  console.assert(stockData.national + stockData.privateReserve + stockData.jointReserve + stockData.otherReserve === stockData.standardDays, "reserve breakdown should equal standardDays");
+  console.assert(Math.round((stockData.totalDays / stockData.standardDays) * 1000) / 10 === stockData.reserveRate, "reserveRate should match totalDays / standardDays");
+  console.assert(aboutLinks.length >= 5, "about page should have enough anchor links");
+  console.assert(aboutLinks.every((link) => link.id && link.label), "about links should have id and label");
+}
+runSelfTests();
+
+const iconPaths = {
+  drop: "M12 3C8.5 7.2 6 10.6 6 14A6 6 0 0 0 18 14C18 10.6 15.5 7.2 12 3Z",
+  ship: "M4 14H20L18 18H6L4 14ZM7 10H17V14H7V10ZM9 7H15V10H9V7Z",
+  tank: "M5 9C5 7.3 8.1 6 12 6S19 7.3 19 9V17C19 18.7 15.9 20 12 20S5 18.7 5 17V9ZM5 9C5 10.7 8.1 12 12 12S19 10.7 19 9",
+  database: "M5 6C5 4.3 8.1 3 12 3S19 4.3 19 6 15.9 9 12 9 5 7.7 5 6ZM5 6V18C5 19.7 8.1 21 12 21S19 19.7 19 18V6M5 12C5 13.7 8.1 15 12 15S19 13.7 19 12",
+  users: "M9 11A4 4 0 1 0 9 3A4 4 0 0 0 9 11ZM17 10A3 3 0 1 0 17 4A3 3 0 0 0 17 10ZM3 21C3 17.7 5.7 15 9 15S15 17.7 15 21M14 15.5C17.2 15.9 20 18.1 20 21",
+  pin: "M12 21S19 14.5 19 9A7 7 0 1 0 5 9C5 14.5 12 21 12 21ZM12 11.5A2.5 2.5 0 1 0 12 6.5A2.5 2.5 0 0 0 12 11.5Z",
+  bell: "M18 8A6 6 0 0 0 6 8C6 15 3 16 3 16H21S18 15 18 8ZM10 20H14",
+  anchor: "M12 3V21M8 7H16M5 13C5 17 8 20 12 20S19 17 19 13",
+  info: "M12 22A10 10 0 1 0 12 2A10 10 0 0 0 12 22ZM12 10V16M12 7H12.01",
+  mail: "M4 6H20V18H4V6ZM4 7L12 13L20 7",
+  scale: "M12 3V21M6 7H18M7 7L4 13H10L7 7ZM17 7L14 13H20L17 7",
+  activity: "M3 12H7L10 5L14 19L17 12H21",
+  clock: "M12 22A10 10 0 1 0 12 2A10 10 0 0 0 12 22ZM12 6V12L16 14",
+  copy: "M8 8H20V20H8V8ZM4 4H16V8H8V16H4V4",
+  external: "M14 3H21V10M21 3L10 14M19 14V21H3V5H10",
+};
+
+function Icon({ name, className = "h-5 w-5" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={iconPaths[name] || iconPaths.info} />
+    </svg>
+  );
+}
+
+const Card = ({ children, className = "" }) => (
+  <div className={`rounded-[28px] border border-slate-200/70 bg-white/85 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl ${className}`}>{children}</div>
+);
+
+const SoftIcon = ({ name, tone = "blue", simple = false }) => {
+  const map = {
+    blue: "bg-blue-50 text-blue-600",
+    green: "bg-emerald-50 text-emerald-600",
+    purple: "bg-violet-50 text-violet-600",
+    amber: "bg-amber-50 text-amber-600",
+    slate: "bg-slate-100 text-slate-700",
+  };
+  return <div className={`grid ${simple ? "h-11 w-11 rounded-xl" : "h-14 w-14 rounded-2xl"} place-items-center ${map[tone]}`}><Icon name={name} className={simple ? "h-5 w-5" : "h-7 w-7"} /></div>;
+};
+
+function Header({ active, setActive }) {
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/95 text-white backdrop-blur-xl">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-4 md:px-6 lg:h-[76px] lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-0">
+        <button onClick={() => setActive("counter")} className="flex w-full items-center gap-3 text-left sm:gap-4 lg:min-w-[320px] lg:w-auto">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-300 to-blue-600 shadow-lg shadow-blue-900/30">
+            <Icon name="drop" className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="whitespace-nowrap text-[13px] font-semibold tracking-[0.14em] text-white sm:text-[15px] sm:tracking-[0.22em]">JAPAN OIL STOCKPILE</div>
+            <div className="mt-1 text-sm text-slate-300">あと何日、日本は持つのか。</div>
+          </div>
+        </button>
+        <nav className="flex w-full items-center overflow-x-auto rounded-full bg-white/6 p-1 lg:w-auto lg:overflow-visible">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActive(tab.id)}
+              className={`relative shrink-0 rounded-full px-4 py-3 text-sm font-semibold transition sm:px-6 lg:px-8 ${active === tab.id ? "bg-blue-500 text-white shadow-[0_0_30px_rgba(59,130,246,0.55)]" : "text-slate-400 hover:text-white"}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        <div className="hidden min-w-[180px] text-right text-xs leading-relaxed text-slate-400 lg:block">
+          <div>最終更新</div>
+          <div className="text-slate-200">2025.05.19 14:32 JST</div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function CounterTab() {
+  return (
+    <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_1.35fr] lg:gap-7">
+        <Card className="relative overflow-hidden p-5 sm:p-7 lg:p-9">
+          <div className="absolute right-[-70px] top-[-70px] h-72 w-72 rounded-full bg-blue-100 blur-3xl" />
+          <div className="relative z-10 flex items-center gap-3 text-slate-600"><Icon name="clock" className="h-5 w-5 text-blue-500" />いま、日本の石油備蓄は</div>
+          <div className="relative z-10 mt-6 flex flex-wrap items-end gap-3 sm:mt-7 sm:gap-4">
+            <div className="bg-gradient-to-br from-sky-400 to-blue-700 bg-clip-text text-[92px] font-black leading-[0.86] tracking-[-0.08em] text-transparent sm:text-[124px] lg:text-[152px]">169</div>
+            <div className="mb-2 sm:mb-4"><div className="text-2xl font-bold text-slate-950 sm:text-3xl">日分</div><div className="mt-1 text-sm font-semibold tracking-widest text-slate-500">DAYS LEFT</div></div>
+          </div>
+          <div className="relative z-10 mt-6 h-px w-full bg-slate-200 sm:mt-8 lg:w-[58%]" />
+          <div className="relative z-10 mt-6 max-w-none sm:mt-7 lg:max-w-[58%]">
+            <div className="text-sm text-slate-500">現在時刻</div>
+            <div className="mt-2 font-mono text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">05:27:35</div>
+            <p className="mt-5 text-sm leading-7 text-slate-500">端末時刻に基づく秒単位の推計値。データは経済産業省「石油備蓄の現況」速報PDFです。</p>
+          </div>
+          <SimpleTankIllustration />
+        </Card>
+
+        <div className="grid gap-7">
+          <Card className="grid grid-cols-1 gap-5 p-5 sm:p-7 md:grid-cols-3 md:gap-0 lg:p-8">
+            <Metric icon="database" title="備蓄残量（全体）" value="68.4%" sub="基準値 247日" />
+            <Metric icon="ship" tone="green" title="稼働中タンカー（AIS）" value="42隻" sub="AIS LIVE・航跡更新中" divider simpleIcon />
+            <Metric icon="drop" tone="purple" title="今日の消費ペース（推計）" value="0.59日/日" sub="前日比 -0.03日" divider simpleIcon />
+          </Card>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 lg:gap-7">
+            <SmallStock icon="activity" title="国家備蓄" value="91" tone="blue" />
+            <SmallStock icon="users" title="民間備蓄" value="73" tone="green" />
+            <SmallStock icon="pin" title="産油国共同備蓄" value="5" tone="purple" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-5 grid grid-cols-1 gap-5 lg:mt-7 lg:grid-cols-[1.1fr_0.92fr_0.72fr] lg:gap-7">
+        <Card className="p-5 sm:p-7">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><h3 className="font-bold text-slate-900">備蓄の推移（全体）</h3><div className="flex gap-2 text-xs"><span className="rounded-xl bg-blue-50 px-4 py-2 font-bold text-blue-600">30日</span><span className="px-4 py-2 text-slate-500">90日</span><span className="px-4 py-2 text-slate-500">1年</span></div></div>
+          <div className="mt-8 h-56 rounded-3xl bg-[linear-gradient(to_bottom,transparent_24%,rgba(148,163,184,.24)_25%,transparent_26%,transparent_49%,rgba(148,163,184,.24)_50%,transparent_51%,transparent_74%,rgba(148,163,184,.24)_75%,transparent_76%)]">
+            <svg viewBox="0 0 640 220" className="h-full w-full overflow-visible">
+              <path d="M20 64 L58 55 L95 67 L132 62 L170 72 L207 69 L245 78 L282 74 L320 84 L357 80 L395 92 L432 90 L470 104 L507 111 L545 124 L582 137 L620 150" fill="none" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" />
+              <circle cx="620" cy="150" r="8" fill="#2563eb" />
+            </svg>
+          </div>
+        </Card>
+        <Card className="p-5 sm:p-7"><h3 className="font-bold text-slate-900">内訳</h3><div className="mt-6 flex flex-col items-center gap-6 sm:mt-8 sm:flex-row sm:gap-8"><DonutChart /><div className="w-full space-y-4 text-sm sm:w-auto"><Legend c="bg-blue-500" t="国家備蓄" v="91日分"/><Legend c="bg-emerald-500" t="民間備蓄" v="73日分"/><Legend c="bg-violet-500" t="産油国共同備蓄" v="5日分"/><Legend c="bg-slate-300" t="その他" v="78日分"/></div></div></Card>
+        <Card className="p-5 sm:p-7"><h3 className="flex items-center gap-2 font-bold text-slate-900"><Icon name="bell" className="h-5 w-5 text-blue-500"/>更新情報</h3><div className="mt-6 overflow-hidden rounded-3xl bg-slate-50"><News d="2025.05.19" tag="NEW" t="石油備蓄の現況を更新"/><News d="2025.05.18" t="AIS航跡データを更新"/><News d="2025.05.17" t="比較例を追加"/></div><button className="mt-5 text-sm font-bold text-blue-600">すべて見る →</button></Card>
+      </section>
+    </main>
+  );
+}
+
+function SimpleTankIllustration() {
+  return (
+    <div className="pointer-events-none absolute bottom-5 right-5 z-0 hidden h-44 w-44 place-items-center rounded-full bg-gradient-to-b from-sky-50 to-white opacity-80 sm:grid lg:bottom-9 lg:right-9 lg:h-56 lg:w-56 lg:opacity-90">
+      <svg viewBox="0 0 220 220" className="h-32 w-32 text-blue-300 lg:h-44 lg:w-44">
+        <rect x="36" y="92" width="68" height="66" rx="10" fill="white" stroke="currentColor" strokeWidth="8" />
+        <path d="M36 104C36 94 104 94 104 104" fill="none" stroke="currentColor" strokeWidth="8" />
+        <rect x="116" y="74" width="68" height="84" rx="10" fill="white" stroke="currentColor" strokeWidth="8" />
+        <path d="M116 86C116 76 184 76 184 86" fill="none" stroke="currentColor" strokeWidth="8" />
+        <path d="M34 166H188" stroke="#86efac" strokeWidth="10" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+function DonutChart() {
+  const items = [
+    { value: stockData.national, color: "#3b82f6" },
+    { value: stockData.privateReserve, color: "#10b981" },
+    { value: stockData.jointReserve, color: "#8b5cf6" },
+    { value: stockData.otherReserve, color: "#cbd5e1" },
+  ];
+  const total = stockData.standardDays;
+  const radius = 58;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <div className="relative h-44 w-44 shrink-0">
+      <svg viewBox="0 0 160 160" className="h-44 w-44 -rotate-90">
+        <circle cx="80" cy="80" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="18" />
+        {items.map((item, index) => {
+          const dash = (item.value / total) * circumference;
+          const segment = <circle key={index} cx="80" cy="80" r={radius} fill="none" stroke={item.color} strokeWidth="18" strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={-offset} strokeLinecap="butt" />;
+          offset += dash;
+          return segment;
+        })}
+      </svg>
+      <div className="absolute inset-0 grid place-items-center text-center">
+        <div>
+          <div className="text-xs text-slate-500">合計</div>
+          <div className="text-3xl font-black text-slate-950">247</div>
+          <div className="text-xs text-slate-500">日分</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Metric({ icon, title, value, sub, tone = "blue", divider, simpleIcon = false }) { return <div className={`flex items-center gap-4 px-0 py-1 md:gap-5 md:px-6 ${divider ? "md:border-l md:border-slate-200" : ""}`}><SoftIcon name={icon} tone={tone} simple={simpleIcon}/><div><div className="text-sm font-bold text-slate-800">{title}</div><div className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{value}</div><div className="mt-4 inline-flex rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">{sub}</div></div></div> }
+function SmallStock({ icon, title, value, tone }) { return <Card className="p-5 sm:p-7 lg:p-8"><SoftIcon name={icon} tone={tone}/><div className="mt-6 text-sm font-bold text-slate-700 lg:mt-8">{title}</div><div className="mt-3 text-4xl font-black text-slate-950 sm:text-5xl lg:mt-4">{value}</div><div className="mt-2 text-slate-500">日分</div></Card> }
+function Legend({ c, t, v }) { return <div className="flex items-center gap-3"><span className={`h-3 w-3 rounded-full ${c}`}/><span className="font-semibold text-slate-700">{t}</span><span className="text-slate-500">{v}</span></div> }
+function News({ d, tag, t }) { return <div className="border-b border-slate-200/70 p-4 text-sm last:border-0"><div className="flex items-center gap-3 text-slate-500">{d}{tag && <span className="rounded-full bg-blue-500 px-3 py-1 text-xs font-bold text-white">{tag}</span>}</div><div className="mt-2 text-slate-700">{t}</div></div> }
+
+function TankerTab() {
+  return <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-10"><section className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.4fr] lg:gap-7"><Card className="p-5 sm:p-7 lg:p-9"><div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-600"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500"/>AIS LIVE・随時更新</div><div className="mt-6 text-[84px] font-black leading-none tracking-[-0.08em] text-blue-600 sm:mt-8 sm:text-[116px]">42</div><div className="text-xl font-bold text-slate-900 sm:text-2xl">隻 観測中</div><div className="mt-6 flex flex-wrap gap-3 sm:mt-7"><Badge>日本向け 10隻</Badge><Badge>その他 32隻</Badge><Badge>更新 14:32 JST</Badge></div><p className="mt-6 text-sm leading-7 text-slate-500 sm:mt-8 sm:text-base sm:leading-8">AIS船舶データをもとに、原油輸送の動きをわかりやすく可視化。速報性を優先した参考情報です。</p></Card><Card className="relative overflow-hidden p-5 sm:p-7 lg:p-8"><div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,.12),transparent_28%),radial-gradient(circle_at_80%_70%,rgba(16,185,129,.10),transparent_26%)]"/><h2 className="relative text-lg font-black text-slate-900 sm:text-xl">航路イメージ</h2><div className="relative mt-6 h-[280px] overflow-hidden rounded-[24px] bg-gradient-to-br from-sky-50 to-blue-100 p-4 sm:mt-8 sm:h-[360px] sm:rounded-[28px] sm:p-8"><Route x1="12%" y1="68%" x2="37%" y2="48%"/><Route x1="37%" y1="48%" x2="64%" y2="54%"/><Route x1="64%" y1="54%" x2="88%" y2="34%"/><Port x="10%" y="69%" label="中東・湾岸"/><Port x="36%" y="47%" label="インド洋"/><Port x="64%" y="55%" label="マラッカ海峡"/><Port x="86%" y="34%" label="受け入れ基地"/><div className="absolute left-10 top-48 animate-[floatShipSmall_12s_ease-in-out_infinite] rounded-xl bg-white/90 p-2 shadow-lg sm:left-24 sm:top-56 sm:animate-[floatShip_12s_ease-in-out_infinite]"><Icon name="ship" className="h-5 w-5 text-blue-600"/></div></div></Card></section><section className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:mt-7 lg:grid-cols-3 lg:gap-7"><BaseCard title="京葉シーバース" place="CHIBA・千葉方面" color="emerald" arrival="2隻" empty="1基" rate="72%"/><BaseCard title="喜入石油備蓄基地" place="KAGOSHIMA・九州方面" color="amber" arrival="3隻" empty="0基" rate="88%"/><BaseCard title="四日市受け入れ基地" place="MIE・中部方面" color="blue" arrival="1隻" empty="2基" rate="61%"/></section></main>
+}
+function Badge({ children }) { return <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">{children}</span> }
+function Route({ x1, y1, x2, y2 }) { return <svg className="absolute inset-0 h-full w-full"><line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#2563eb" strokeWidth="2" strokeDasharray="7 10" strokeLinecap="round" opacity="0.65"/></svg> }
+function Port({ x, y, label }) { return <div className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{left:x,top:y}}><div className="mx-auto grid h-10 w-10 place-items-center rounded-xl bg-white/90 shadow-md"><Icon name="anchor" className="h-4 w-4 text-slate-600"/></div><div className="mt-2 text-xs font-bold text-slate-600">{label}</div></div> }
+function BaseCard({ title, place, color, arrival, empty, rate }) { const c={emerald:"border-emerald-400",amber:"border-amber-400",blue:"border-blue-400"}[color]; return <Card className={`border-l-8 ${c} p-5 sm:p-7`}><h3 className="text-xl font-black text-slate-900">{title}</h3><div className="mt-1 text-sm text-slate-500">{place}</div><div className="mt-6 text-sm font-bold text-emerald-600">● 稼働中・受け入れ可</div><dl className="mt-6 space-y-3 text-sm"><Row k="本日着岸予定" v={arrival}/><Row k="バース空き" v={empty}/><Row k="タンク充填率" v={rate}/></dl></Card> }
+function Row({k,v}){return <div className="flex justify-between border-b border-slate-100 pb-3"><dt className="text-slate-500">{k}</dt><dd className="font-black text-slate-900">{v}</dd></div>}
+
+function ScaleTab(){return <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-10"><section className="rounded-[28px] bg-slate-950 p-6 text-white shadow-2xl sm:rounded-[36px] sm:p-10"><div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs text-slate-300 sm:text-sm">経産省 最新速報値・2025年3月時点</div><h1 className="mt-6 text-3xl font-black tracking-tight sm:text-5xl">石油のものさし</h1><p className="mt-4 text-base leading-7 text-slate-300 sm:text-lg">169日分を、容量・スケール・豆知識の3つの視点から体感できる形に変換します。</p></section><section className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3 lg:mt-7 lg:gap-7"><Unit title="キロリットル" value="4,732万" unit="kL"/><Unit title="バレル" value="2億9,764万" unit="barrel"/><Unit title="リットル" value="473億2,000万" unit="L"/></section><section className="mt-5 grid grid-cols-1 gap-5 lg:mt-7 lg:grid-cols-2 lg:gap-7"><Compare icon="ship" title="VLCCタンカー何隻分？" value="約157隻" body="超大型原油タンカー1隻を約30万kLとして換算。東京湾に157隻が並ぶイメージ。" type="ships"/><Compare icon="scale" title="お風呂何杯分？" value="約1,577億杯" body="家庭用お風呂1杯を約300Lとして換算。全国民が毎日入り続けて約3,500年分に相当。" type="baths"/></section></main>}
+function Unit({title,value,unit}){return <Card className="p-5 sm:p-7 lg:p-8"><div className="text-sm font-bold tracking-widest text-slate-400">{title}</div><div className="mt-4 text-3xl font-black text-slate-950 sm:text-4xl lg:text-5xl">{value}</div><div className="mt-2 text-slate-500">{unit}</div></Card>}
+function Compare({icon,title,value,body,type}){return <Card className="p-5 sm:p-7 lg:p-8"><div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8"><div><div className="flex items-center gap-3 text-lg font-black text-slate-900 sm:text-xl"><Icon name={icon} className="h-6 w-6 text-blue-600"/>{title}</div><p className="mt-4 text-sm leading-7 text-slate-500 sm:mt-5 sm:text-base sm:leading-8">{body}</p></div><div className="shrink-0 text-left text-4xl font-black text-blue-600 sm:text-right sm:text-5xl">{value}</div></div><MiniVisual type={type}/><div className="mt-7 flex flex-wrap gap-3"><ShareButton label="X"/><ShareButton label="LINE"/><ShareButton label="note"/><ShareButton label="コピー"/></div></Card>}
+function MiniVisual({ type }) { return <div className="mt-6 grid grid-cols-6 gap-2 sm:mt-8 sm:grid-cols-12">{Array.from({length:24}).map((_,i)=><div key={i} className={`h-7 rounded-md ${type === "ships" ? "bg-blue-100" : "bg-slate-100"}`}><Icon name={type === "ships" ? "ship" : "drop"} className={`mx-auto mt-1 h-4 w-4 ${type === "ships" ? "text-blue-500" : "text-slate-400"}`}/></div>)}</div> }
+function ShareButton({label}){return <button className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm">{label}</button>}
+
+function AboutTab(){return <main className="mx-auto grid max-w-[1440px] grid-cols-1 gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[280px_1fr] lg:gap-10 lg:px-8 lg:py-10"><aside className="static h-fit overflow-x-auto rounded-[24px] bg-white/80 p-3 shadow-lg shadow-slate-200/60 lg:sticky lg:top-28 lg:rounded-[28px] lg:p-5"><div className="flex gap-2 lg:block">{aboutLinks.map((link,index)=><a key={link.id} href={`#${link.id}`} className={`block shrink-0 rounded-2xl px-4 py-3 text-sm font-bold lg:px-5 lg:py-4 lg:text-base ${index===0 ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}>{link.label}</a>)}</div></aside><article className="space-y-5 lg:space-y-7"><Card id="purpose" className="scroll-mt-28 p-6 sm:p-8 lg:p-10"><h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">このサイトについて</h1><p className="mt-6 text-base leading-8 text-slate-600 sm:text-lg sm:leading-9">日本の石油備蓄を、出典付き・最小限の数字で静かに可視化する非公式サイトです。日本は石油の約97%を輸入に依存しており、IEA基準で90日分の備蓄義務を負うエネルギー安全保障上の脆弱国です。</p></Card><InfoBlock id="source" icon="database" title="データ出典" body="経済産業省の石油備蓄速報値、IEA基準、公開されているAIS関連情報などをもとに構成しています。"/><InfoBlock id="company" icon="info" title="運営・会社概要" body="株式会社ネクストラボ（NextLab Inc.）代表：亀井 智英 / 東京都渋谷区渋谷2-19-15"/><InfoBlock id="media" icon="external" title="メディア・報道関係者の方へ" body="カウンター数値、スクリーン画像、グラフ等は、出典を明記いただければ報道・記事・SNS等でご利用いただけます。"/><InfoBlock id="notice" icon="info" title="免責事項" body="本サイトは推計・可視化を目的とした非公式サイトです。正確性、完全性、即時性を保証するものではありません。"/><Card id="contact" className="scroll-mt-28 p-6 sm:p-8"><h2 className="flex items-center gap-3 text-xl font-black sm:text-2xl"><Icon name="mail" className="h-6 w-6 text-blue-600"/>お問い合わせ</h2><div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"><div className="rounded-2xl bg-slate-50 p-5"><div className="text-xs font-bold text-slate-400">取材・お問い合わせ</div><div className="mt-2 font-bold text-slate-800">nextlabs.jp/contact</div></div><div className="rounded-2xl bg-slate-50 p-5"><div className="text-xs font-bold text-slate-400">社名</div><div className="mt-2 font-bold text-slate-800">株式会社ネクストラボ</div></div></div><div className="mt-6 flex flex-col gap-3 sm:flex-row"><input className="h-14 flex-1 rounded-2xl border border-slate-200 px-5 outline-none" placeholder="メールアドレスを入力"/><button className="rounded-2xl bg-slate-950 px-8 font-bold text-white">登録する</button></div></Card></article></main>}
+function InfoBlock({id,icon,title,body}){return <Card id={id} className="scroll-mt-28 p-6 sm:p-8"><h2 className="flex items-center gap-3 text-xl font-black text-slate-950 sm:text-2xl"><Icon name={icon} className="h-6 w-6 text-blue-600"/>{title}</h2><p className="mt-5 text-base leading-8 text-slate-600">{body}</p></Card>}
+
+function Footer(){return <footer className="mx-auto flex max-w-[1440px] flex-col gap-5 px-4 pb-10 pt-4 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div>株式会社ネクストラボ（NextLab Inc.） / nextlabs.jp</div><div className="flex flex-wrap items-center gap-3"><ShareButton label="X"/><ShareButton label="LINE"/><ShareButton label="note"/><button className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700"><Icon name="copy" className="mr-2 inline h-4 w-4"/>リンクをコピー</button></div></footer>}
+
+export default function App(){
+  const [active,setActive]=useState("counter");
+  const Current=useMemo(()=>({counter:<CounterTab/>,tanker:<TankerTab/>,scale:<ScaleTab/>,about:<AboutTab/>}[active]),[active]);
+  return <div className="min-h-screen scroll-smooth bg-[radial-gradient(circle_at_20%_0%,#eaf5ff_0,transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef6ff_48%,#f8fafc_100%)] text-slate-950"><style>{`@keyframes floatShip { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(520px); } } @keyframes floatShipSmall { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(220px); } }`}</style><Header active={active} setActive={setActive}/><div key={active}>{Current}</div><Footer/></div>
+}
